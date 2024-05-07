@@ -8,7 +8,10 @@ async function runPuppeteer() {
   try {
     // Launch the browser and open a new blank page
     console.log('Running Puppeteer script...');
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox'],
+    });
     const page = await browser.newPage();
 
     const context = browser.defaultBrowserContext();
