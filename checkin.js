@@ -6,7 +6,7 @@ async function runPuppeteer() {
   try {
     // Launch the browser and open a new blank page
     console.log('Running Puppeteer script...');
-    const browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch({ headless: true });
 
     const page = await browser.newPage();
 
@@ -57,7 +57,7 @@ async function runPuppeteer() {
 }
 
 // Schedule the Puppeteer script to run every minute
-task = cron.schedule('0 */30 * * * *', runPuppeteer);
+task = cron.schedule('0 */1 * * * *', runPuppeteer);
 
 // To stop the cron task later
 // task.stop();
