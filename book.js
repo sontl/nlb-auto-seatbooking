@@ -8,7 +8,7 @@ async function runPuppeteer() {
   try {
     // Launch the browser and open a new blank page
     console.log('Running Puppeteer script...');
-    const browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
 
     const context = browser.defaultBrowserContext();
@@ -17,6 +17,8 @@ async function runPuppeteer() {
     ]);
 
     await login(page);
+    await setGeolocation(page);
+
     await bookOneFlow(page, '11:00', DURATION30);
     await bookOneFlow(page, '11:45', DURATION30);
     await bookOneFlow(page, '13:30', DURATION30);
@@ -45,7 +47,7 @@ async function runPuppeteer() {
 async function bookOneFlow(page, time, duration) {
   // Go to My Booking page
   await page.goto('https://www.nlb.gov.sg/seatbooking/');
-  await setGeolocation(page);
+
   await selectLibrary(page);
   await selectDate(page);
   await selectTime(page, time);
@@ -96,14 +98,14 @@ async function selectLibrary(page) {
     'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select library"]'
   );
 
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   // Click the parent element of the input with aria-label="Select library"
   await page.click(
     'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select library"]'
   );
 
   console.log('Clicked to Select library ');
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   await page.click(
     'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select library"]',
     { clickCount: 2 }
@@ -117,7 +119,7 @@ async function selectLibrary(page) {
   // Click the radio input to select "Serangoon"
   await serangoonRadioInput.click();
   // Wait for some time to see the result (optional)
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
 async function selectDate(page) {
@@ -127,7 +129,7 @@ async function selectDate(page) {
   console.log('Clicked to Date slot ');
   await new Promise((resolve) => setTimeout(resolve, 500));
   await page.click(`text=${getTomorrowsDate()}`);
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
 async function selectTime(page, time) {
@@ -141,23 +143,25 @@ async function selectTime(page, time) {
   // Click the radio input to select the time "10:30"
   await radioTimeInput.click();
   // Wait for some time to see the result (optional)
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
 async function selectDuration(page, duration) {
-  await page.click(
-    'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select duration"]'
-  );
-  console.log('Clicked to Duration slot ');
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  // Find the radio input element with value "10:30"
-  const radioDurationInput = await page.waitForSelector(
-    `input[value="${duration}"]`
-  );
-  // Click the radio input to select the time "10:30"
-  await radioDurationInput.click();
-  // Wait for some time to see the result (optional)
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  if (duration !== DURATION30) {
+    await page.click(
+      'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select duration"]'
+    );
+    console.log('Clicked to Duration slot ');
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Find the radio input element with value "10:30"
+    const radioDurationInput = await page.waitForSelector(
+      `input[value="${duration}"]`
+    );
+    // Click the radio input to select the time "10:30"
+    await radioDurationInput.click();
+    // Wait for some time to see the result (optional)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
 }
 
 async function checkAvailableSlot(page) {
@@ -181,10 +185,15 @@ async function loginToBook(page) {
     await page.click('div[tabindex="0"]');
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    const loginToBookButton = await page.waitForSelector(
-      'div.row > div.col >  button > span.v-btn__content > i.mdi-login-variant'
+    const isLoginToBookButtonExist = await page.$eval(
+      'div.row > div.col >  button > span.v-btn__content > i.mdi-login-variant',
+      (element) => !!element
     );
-    if (loginToBookButton) {
+
+    if (isLoginToBookButtonExist) {
+      const loginToBookButton = await page.waitForSelector(
+        'div.row > div.col >  button > span.v-btn__content > i.mdi-login-variant'
+      );
       await loginToBookButton.click();
       console.log('Clicked to Login to Book button ');
     } else {
