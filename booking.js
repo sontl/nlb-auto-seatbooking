@@ -57,7 +57,7 @@ async function bookOneFlow(page, time, duration) {
   await selectDuration(page, duration);
   await checkAvailableSlot(page);
   await loginToBook(page);
-  //await bookSeat(page);
+  await bookSeat(page);
 }
 
 async function login(page) {
@@ -131,7 +131,20 @@ async function selectDate(page) {
   );
   console.log('Clicked to Date slot ');
   await new Promise((resolve) => setTimeout(resolve, 500));
-  await page.click(`text=${getTomorrowsDate()}`);
+
+  const links = await page.$$('button > div.v-btn__content');
+  console.log(links.length);
+  for (var i = 0; i < links.length; i++) {
+    let valueHandle = await links[i].getProperty('innerText');
+    let linkText = await valueHandle.jsonValue();
+    console.log('i=' + i + ' linkText=' + linkText);
+    console.log('linkText=' + linkText);
+    if (linkText === getTomorrowsDate().toString()) {
+      await links[i].click();
+      break;
+    }
+  }
+
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
@@ -212,7 +225,7 @@ async function bookSeat(page) {
   const bookButton = await page.waitForSelector(
     'div.row > div.col >  button > span.v-btn__content > i.mdi-calendar-check'
   );
-  if (button) {
+  if (bookButton) {
     await bookButton.click();
     console.log('Clicked to Book button ');
   } else {
