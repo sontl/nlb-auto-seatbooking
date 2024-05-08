@@ -85,8 +85,10 @@ async function runPuppeteer() {
   }
 }
 
-// Schedule the Puppeteer script to run every minute
-task = cron.schedule('0 */30 * * * *', runPuppeteer);
+// Schedule the Puppeteer script to run every
+// 15 minutes from Monday to Friday, between 10am and 5:45pm
+//task = cron.schedule('0 */30 * * * *', runPuppeteer);
+task = cron.schedule('0 */15 10-17 * * 1-5', runPuppeteer);
 
 runPuppeteer();
 
