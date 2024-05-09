@@ -1,4 +1,5 @@
 const puppeteer = require('puppeteer');
+const cron = require('node-cron');
 
 const DURATION30 = '30';
 const DURATION45 = '45';
@@ -137,8 +138,6 @@ async function selectDate(page) {
   for (var i = 0; i < links.length; i++) {
     let valueHandle = await links[i].getProperty('innerText');
     let linkText = await valueHandle.jsonValue();
-    console.log('i=' + i + ' linkText=' + linkText);
-    console.log('linkText=' + linkText);
     if (linkText === getTomorrowsDate().toString()) {
       await links[i].click();
       break;
@@ -254,10 +253,15 @@ function getTomorrowsDate() {
   return tomorrowDate;
 }
 
+// Define the cron schedule
+const cronSchedule = '1 10 * * 0-4'; // 10:01 AM, Sunday through Thursday
+
+// Schedule the task
+const task = cron.schedule(cronSchedule, runPuppeteer, {
+  scheduled: true,
+  timezone: 'Asia/Singapore', // Set the timezone to Singapore
+});
+
+// Start the cron job
+task.start();
 runPuppeteer();
-
-// Schedule the Puppeteer script to run every minute
-// task = cron.schedule('0 */59 * * * *', runPuppeteer);
-
-// To stop the cron task later
-// task.stop();
