@@ -139,6 +139,7 @@ async function selectDate(page) {
     let valueHandle = await links[i].getProperty('innerText');
     let linkText = await valueHandle.jsonValue();
     if (linkText === getTomorrowsDate().toString()) {
+      console.log('Date selected: ' + linkText);
       await links[i].click();
       break;
     }
@@ -249,7 +250,7 @@ function getTomorrowsDate() {
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
   const tomorrowDate = tomorrow.getDate();
-  console.log(`Tomorrow's date: ${tomorrowDate}`);
+  //console.log(`Tomorrow's date: ${tomorrowDate}`);
   return tomorrowDate;
 }
 
