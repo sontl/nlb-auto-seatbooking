@@ -49,16 +49,19 @@ async function runPuppeteer() {
 }
 
 async function bookOneFlow(page, time, duration) {
+  const seatNumber = 'SRPL.4.ChildrenCollection.12';
+  const area = 'SRPL.4.ChildrenCollection';
   // Go to My Booking page
   await page.goto('https://www.nlb.gov.sg/seatbooking/');
 
   await selectLibrary(page);
+  await selectArea(page, area);
   await selectDate(page);
   await selectTime(page, time);
   await selectDuration(page, duration);
   await checkAvailableSlot(page);
   await loginToBook(page);
-  await bookSeat(page);
+  await bookSeat(page, seatNumber);
 }
 
 async function login(page) {
@@ -123,6 +126,21 @@ async function selectLibrary(page) {
   // Click the radio input to select "Serangoon"
   await serangoonRadioInput.click();
   // Wait for some time to see the result (optional)
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+}
+
+async function selectArea(page, area) {
+  await page.click(
+    'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select area"]'
+  );
+  console.log('Clicked to Area slot ');
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  await page.waitForSelector('div[role="dialog"]');
+  const nearChineseChildrenCollectionRadioInput = await page.$(
+    `input[value='${area}']`
+  );
+  await nearChineseChildrenCollectionRadioInput.click();
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
@@ -198,8 +216,8 @@ async function checkAvailableSlot(page) {
 
 async function loginToBook(page) {
   try {
-    await page.click('div[tabindex="0"]');
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    //await page.click('div[tabindex="0"]');
+    //await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const isLoginToBookButtonExist = await page.$eval(
       'div.row > div.col >  button > span.v-btn__content > i.mdi-login-variant',
@@ -221,7 +239,7 @@ async function loginToBook(page) {
   }
 }
 
-async function bookSeat(page) {
+async function bookSeat(page, seatNumber) {
   const bookButton = await page.waitForSelector(
     'div.row > div.col >  button > span.v-btn__content > i.mdi-calendar-check'
   );
@@ -236,7 +254,7 @@ async function bookSeat(page) {
   await page.click('div > i.mdi-seat-passenger');
   await new Promise((resolve) => setTimeout(resolve, 1000));
   const radioSeatInput = await page.waitForSelector(
-    'input[value="SRPL.4.EnglishGeneralCollection.1"]'
+    `input[value="${seatNumber}"]`
   );
   await radioSeatInput.click();
 
