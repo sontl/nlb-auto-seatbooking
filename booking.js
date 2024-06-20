@@ -273,7 +273,7 @@ function getTomorrowsDate() {
 }
 
 // Define the cron schedule
-const cronSchedule = '1 10 * * 0-4'; // 10:01 AM, Sunday through Thursday
+const cronSchedule = '1 12 * * 0-4'; // 10:01 AM, Sunday through Thursday
 
 // Schedule the task
 const task = cron.schedule(cronSchedule, runPuppeteer, {
