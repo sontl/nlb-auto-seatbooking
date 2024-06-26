@@ -49,7 +49,7 @@ async function runPuppeteer() {
 }
 
 async function bookOneFlow(page, time, duration) {
-  const seatNumber = 'SRPL.4.ChildrenCollection.12';
+  const seatNumber = 'SRPL.4.ChildrenCollection.13';
   const area = 'SRPL.4.ChildrenCollection';
   // Go to My Booking page
   await page.goto('https://www.nlb.gov.sg/seatbooking/');
