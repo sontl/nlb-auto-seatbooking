@@ -9,7 +9,7 @@ async function scheduleBookings() {
         const schedules = await db.getActiveSchedules();
         console.log(`📊 Found ${schedules.length} active schedule(s)`);
         
-        schedules.forEach((schedule, index) => {
+        schedules.forEach(async (schedule, index) => {
             console.log(`\n🔍 Processing schedule ${index + 1}/${schedules.length}:`);
             console.log(`   ID: ${schedule.id}`);
             
@@ -71,6 +71,12 @@ async function scheduleBookings() {
                 console.log(`   ⏰ Execution time: ${schedule.scheduled_time}`);
             } else {
                 console.log(`⏭️  Skipping past schedule #${schedule.id} (${schedule.scheduled_date} ${schedule.scheduled_time})`);
+                try {
+                    await db.updateScheduleStatus(schedule.id, 'skipped');
+                    console.log(`   📝 Schedule status updated to: skipped`);
+                } catch (error) {
+                    console.error(`   ❌ Error updating schedule status: ${error.message}`);
+                }
             }
         });
     } catch (error) {
