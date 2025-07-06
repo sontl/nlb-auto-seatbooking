@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLB Seat Booking</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .library-card:hover {
+            transform: translateY(-2px);
+            transition: all 0.2s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">NLB Seat Booking System</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Current Preferences</h2>
+            <div id="currentPreferences" class="text-gray-600">
+                Loading...
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Select Library</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="libraryList">
+                Loading libraries...
+            </div>
+        </div>
+
+        <div id="areaSelection" class="bg-white rounded-lg shadow-lg p-6 mt-8 hidden">
+            <h2 class="text-xl font-semibold mb-4">Select Area</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="areaList"></div>
+        </div>
+
+        <div class="mt-8 flex justify-center">
+            <button id="triggerBooking" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                Start Booking Process
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let selectedLibrary = null;
+        let selectedArea = null;
+
+        // Load current preferences
+        async function loadPreferences() {
+            try {
+                const response = await fetch('/api/preferences');
+                const prefs = await response.json();
+                if (prefs.library_code) {
+                    const library = libraryData.find(l => l.code === prefs.library_code);
+                    document.getElementById('currentPreferences').innerHTML = `
+                        <p><strong>Selected Library:</strong> ${library ? library.name : prefs.library_code}</p>
+                        <p><strong>Selected Area:</strong> ${prefs.area_code}</p>
+                    `;
+                    selectedLibrary = prefs.library_code;
+                    selectedArea = prefs.area_code;
+                    document.getElementById('triggerBooking').disabled = false;
+                } else {
+                    document.getElementById('currentPreferences').innerHTML = 'No preferences set';
+                }
+            } catch (err) {
+                console.error('Error loading preferences:', err);
+            }
+        }
+
+        // Load libraries
+        let libraryData = [];
+        async function loadLibraries() {
+            try {
+                const response = await fetch('/api/libraries');
+                libraryData = await response.json();
+                
+                const libraryList = document.getElementById('libraryList');
+                libraryList.innerHTML = libraryData
+                    .filter(library => library.areas && library.areas.length > 0)
+                    .map(library => `
+                        <div class="library-card bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100 ${selectedLibrary === library.code ? 'ring-2 ring-blue-500' : ''}"
+                             data-library-code="${library.code}"
+                             onclick="selectLibrary('${library.code}')">
+                            <h3 class="font-semibold text-lg">${library.name}</h3>
+                            <p class="text-sm text-gray-600">${library.areas.length} areas available</p>
+                        </div>
+                    `).join('');
+            } catch (err) {
+                console.error('Error loading libraries:', err);
+            }
+        }
+
+        // Select library
+        function selectLibrary(libraryCode) {
+            selectedLibrary = libraryCode;
+            const library = libraryData.find(l => l.code === libraryCode);
+            
+            // Update library selection UI
+            document.querySelectorAll('.library-card').forEach(card => {
+                card.classList.remove('ring-2', 'ring-blue-500');
+            });
+            document.querySelector(`.library-card[data-library-code="${libraryCode}"]`).classList.add('ring-2', 'ring-blue-500');
+
+            // Show and populate area selection
+            const areaSelection = document.getElementById('areaSelection');
+            areaSelection.classList.remove('hidden');
+            
+            const areaList = document.getElementById('areaList');
+            areaList.innerHTML = library.areas.map(area => `
+                <div class="area-card bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100 ${selectedArea === area.code ? 'ring-2 ring-blue-500' : ''}"
+                     data-area-code="${area.code}"
+                     onclick="selectArea('${area.code}')">
+                    <h4 class="font-semibold">${area.name}</h4>
+                    <p class="text-sm text-gray-600">Min: ${area.minBookingMinutes} mins, Max: ${area.maxBookingMinutes} mins</p>
+                </div>
+            `).join('');
+        }
+
+        // Select area
+        async function selectArea(areaCode) {
+            selectedArea = areaCode;
+            
+            // Update area selection UI
+            document.querySelectorAll('.area-card').forEach(card => {
+                card.classList.remove('ring-2', 'ring-blue-500');
+            });
+            document.querySelector(`.area-card[data-area-code="${areaCode}"]`).classList.add('ring-2', 'ring-blue-500');
+
+            // Save preferences
+            try {
+                await fetch('/api/preferences', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        libraryCode: selectedLibrary,
+                        areaCode: selectedArea
+                    })
+                });
+
+                // Enable booking button
+                document.getElementById('triggerBooking').disabled = false;
+                
+                // Reload preferences
+                await loadPreferences();
+            } catch (err) {
+                console.error('Error saving preferences:', err);
+            }
+        }
+
+        // Trigger booking
+        document.getElementById('triggerBooking').addEventListener('click', async () => {
+            if (!selectedLibrary) return;
+
+            try {
+                const response = await fetch('/api/trigger-booking', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        libraryCode: selectedLibrary
+                    })
+                });
+                
+                const result = await response.json();
+                alert('Booking process started! Check the console for progress.');
+            } catch (err) {
+                console.error('Error triggering booking:', err);
+                alert('Error starting booking process. Check console for details.');
+            }
+        });
+
+        // Initial load
+        loadPreferences();
+        loadLibraries();
+    </script>
+</body>
+</html> 
