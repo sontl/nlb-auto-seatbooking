@@ -35,9 +35,20 @@ if (!SELECTED_LIBRARY) {
 }
 
 // Function to run Puppeteer
-async function runPuppeteer() {
+async function runPuppeteerWithPreferences(preferences = null) {
   try {
-    console.log('\n🎯 Starting booking session for ' + SELECTED_LIBRARY.name + ' library...\n');
+    console.log('\n🎯 Starting booking session...');
+    
+    // Use provided preferences or fallback to environment variables
+    const libraryCode = preferences?.libraryCode || process.env.LIBRARY_CODE || 'SRPL';
+    const selectedLibrary = LIBRARIES[libraryCode];
+
+    if (!selectedLibrary) {
+      throw new Error(`Invalid library code: ${libraryCode}. Available libraries: ${Object.keys(LIBRARIES).join(', ')}`);
+    }
+
+    console.log(`📚 Selected library: ${selectedLibrary.name}`);
+
     const browser = await puppeteer.launch({
       headless: false,
       args: ['--no-sandbox'],
@@ -52,43 +63,29 @@ async function runPuppeteer() {
     await login(page);
     await setGeolocation(page);
 
-    await bookOneFlow(page, '11:00', DURATION30);
-    await bookOneFlow(page, '11:45', DURATION30);
-    await bookOneFlow(page, '13:30', DURATION30);
-    await bookOneFlow(page, '14:15', DURATION30);
-    await bookOneFlow(page, '15:00', DURATION30);
-    await bookOneFlow(page, '15:45', DURATION30);
-    await bookOneFlow(page, '16:30', DURATION30);
-    await bookOneFlow(page, '17:15', DURATION30);
+    // Use the provided area code or the first available area
+    const areaCode = preferences?.areaCode || selectedLibrary.areas[0].code;
+    const area = selectedLibrary.areas.find(a => a.code === areaCode);
+    
+    if (!area) {
+      throw new Error(`Invalid area code: ${areaCode} for library ${selectedLibrary.name}`);
+    }
 
-    // await logout(page);
-    // logout button
-    // const logoutButton = page.waitForSelector('button.mdi-login-variant');
-    // if (logoutButton) {
-    //   await logoutButton.click();
-    //   console.log('Clicked to Logout');
-    // } else {
-    //   console.log('Logout button not found');
-    // }
+    await bookOneFlow(page, '11:00', DURATION30, selectedLibrary, area);
+    await bookOneFlow(page, '11:45', DURATION30, selectedLibrary, area);
+    await bookOneFlow(page, '13:30', DURATION30, selectedLibrary, area);
+    await bookOneFlow(page, '14:15', DURATION30, selectedLibrary, area);
+    await bookOneFlow(page, '15:00', DURATION30, selectedLibrary, area);
+    await bookOneFlow(page, '15:45', DURATION30, selectedLibrary, area);
+    await bookOneFlow(page, '16:30', DURATION30, selectedLibrary, area);
+    await bookOneFlow(page, '17:15', DURATION30, selectedLibrary, area);
 
-    // await browser.close();
   } catch (error) {
     console.error('❌ Error:', error);
   }
 }
 
-async function bookOneFlow(page, time, duration) {
-  // Get the first available area for the selected library
-  const selectedLibraryAreas = SELECTED_LIBRARY.areas;
-  if (!selectedLibraryAreas || selectedLibraryAreas.length === 0) {
-    throw new Error(`No areas available for library: ${SELECTED_LIBRARY.name}`);
-  }
-  
-  // Use the first area's code and first seat code
-  const firstArea = selectedLibraryAreas[0];
-  const areaCode = firstArea.code;
-  const seatNumber = firstArea.firstSeatCode;
-  
+async function bookOneFlow(page, time, duration, selectedLibrary, selectedArea) {
   console.log('\n📚 Starting new booking flow for ' + time + ' (' + duration + ' mins)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   
@@ -96,14 +93,14 @@ async function bookOneFlow(page, time, duration) {
   await page.waitForSelector('input[aria-label="Select library"]', { visible: true, timeout: 30000 });
   console.log('✨ Seat booking page loaded successfully');
   
-  await selectLibrary(page);
-  await selectArea(page, areaCode);
+  await selectLibrary(page, selectedLibrary);
+  await selectArea(page, selectedArea.code);
   await selectDate(page);
   await selectTime(page, time);
   await selectDuration(page, duration);
   await checkAvailableSlot(page);
   await loginToBook(page);
-  await bookSeat(page, seatNumber);
+  await bookSeat(page, selectedArea.firstSeatCode);
   
   console.log('\n✅ Booking flow completed for ' + time);
 }
@@ -131,16 +128,16 @@ async function setGeolocation(page) {
   console.log('\n📍 Location set to: ' + SELECTED_LIBRARY.name);
 }
 
-async function selectLibrary(page) {
+async function selectLibrary(page, selectedLibrary) {
   try {
     const libraryInputSelector = 'input[aria-label="Select library"]';
     const dialogSelector = 'div[role="dialog"]';
-    const librarySelector = `input[value="${SELECTED_LIBRARY.code}"]`;
+    const librarySelector = `input[value="${selectedLibrary.code}"]`;
     let maxAttempts = 3;
     let attempt = 0;
     let dialogVisible = false;
 
-    console.log('\n📚 Selecting library: ' + SELECTED_LIBRARY.name);    
+    console.log('\n📚 Selecting library: ' + selectedLibrary.name);    
     
     await page.waitForSelector(libraryInputSelector, { visible: true, timeout: 30000 });
     console.log('➜ Library selector ready');
@@ -175,11 +172,11 @@ async function selectLibrary(page) {
     await page.click(librarySelector);
     
     const selectedValue = await page.$eval(libraryInputSelector, el => el.value);
-    if (!selectedValue.includes(SELECTED_LIBRARY.name)) {
+    if (!selectedValue.includes(selectedLibrary.name)) {
       throw new Error('Library selection verification failed');
     }
     
-    console.log('✅ Selected: ' + SELECTED_LIBRARY.name);
+    console.log('✅ Selected: ' + selectedLibrary.name);
   } catch (error) {
     console.error('❌ Error selecting library:', error.message);
     throw error;
@@ -336,19 +333,11 @@ function getTomorrowsDate() {
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
   const tomorrowDate = tomorrow.getDate();
-  //console.log(`Tomorrow's date: ${tomorrowDate}`);
   return tomorrowDate;
 }
 
-// Define the cron schedule
-const cronSchedule = '1 12 * * 0-4'; // 10:01 AM, Sunday through Thursday
-
-// Schedule the task
-const task = cron.schedule(cronSchedule, runPuppeteer, {
-  scheduled: true,
-  timezone: 'Asia/Singapore', // Set the timezone to Singapore
-});
-
-// Start the cron job
-task.start();
-runPuppeteer();
+// Remove the immediate execution and cron schedule from here
+// Export only the necessary functions
+module.exports = {
+  runPuppeteerWithPreferences
+};

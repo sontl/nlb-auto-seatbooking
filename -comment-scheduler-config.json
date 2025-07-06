@@ -1,0 +1,16 @@
+{
+  "schedules": [
+    {
+      "date": "2024-03-21",
+      "time": "00:00",
+      "library_code": "SRPL",
+      "area_code": "SRPL_L3STUDY"
+    },
+    {
+      "date": "2024-03-22",
+      "time": "00:00",
+      "library_code": "TPPL",
+      "area_code": "TPPL_L8STUDY"
+    }
+  ]
+} 

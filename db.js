@@ -12,6 +12,17 @@ db.serialize(() => {
     area_code TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+
+  // Create schedules table
+  db.run(`CREATE TABLE IF NOT EXISTS schedules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    library_code TEXT NOT NULL,
+    area_code TEXT NOT NULL,
+    scheduled_date TEXT NOT NULL,
+    scheduled_time TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 });
 
 // Get current preferences
@@ -36,7 +47,75 @@ function savePreferences(libraryCode, areaCode) {
   });
 }
 
+// Schedule Management Functions
+function getAllSchedules() {
+  return new Promise((resolve, reject) => {
+    db.all("SELECT * FROM schedules ORDER BY scheduled_date ASC, scheduled_time ASC", (err, rows) => {
+      if (err) reject(err);
+      resolve(rows);
+    });
+  });
+}
+
+function getActiveSchedules() {
+  const now = new Date().toISOString().split('T')[0];
+  return new Promise((resolve, reject) => {
+    db.all(
+      "SELECT * FROM schedules WHERE scheduled_date >= ? AND status = 'pending' ORDER BY scheduled_date ASC, scheduled_time ASC",
+      [now],
+      (err, rows) => {
+        if (err) reject(err);
+        resolve(rows);
+      }
+    );
+  });
+}
+
+function addSchedule(libraryCode, areaCode, scheduledDate, scheduledTime) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      "INSERT INTO schedules (library_code, area_code, scheduled_date, scheduled_time) VALUES (?, ?, ?, ?)",
+      [libraryCode, areaCode, scheduledDate, scheduledTime],
+      function(err) {
+        if (err) reject(err);
+        resolve(this.lastID);
+      }
+    );
+  });
+}
+
+function updateScheduleStatus(id, status) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      "UPDATE schedules SET status = ? WHERE id = ?",
+      [status, id],
+      function(err) {
+        if (err) reject(err);
+        resolve(this.changes);
+      }
+    );
+  });
+}
+
+function deleteSchedule(id) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      "DELETE FROM schedules WHERE id = ?",
+      [id],
+      function(err) {
+        if (err) reject(err);
+        resolve(this.changes);
+      }
+    );
+  });
+}
+
 module.exports = {
   getPreferences,
-  savePreferences
+  savePreferences,
+  getAllSchedules,
+  getActiveSchedules,
+  addSchedule,
+  updateScheduleStatus,
+  deleteSchedule
 }; 

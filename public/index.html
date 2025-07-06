@@ -6,10 +6,13 @@
     <title>NLB Seat Booking</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        .library-card:hover {
+        .library-card:hover, .schedule-card:hover {
             transform: translateY(-2px);
             transition: all 0.2s ease;
         }
+        .status-pending { background-color: #FEF3C7; }
+        .status-completed { background-color: #D1FAE5; }
+        .status-failed { background-color: #FEE2E2; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -33,6 +36,39 @@
         <div id="areaSelection" class="bg-white rounded-lg shadow-lg p-6 mt-8 hidden">
             <h2 class="text-xl font-semibold mb-4">Select Area</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="areaList"></div>
+        </div>
+
+        <!-- Scheduling Section -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mt-8">
+            <h2 class="text-xl font-semibold mb-4">Schedule Bookings</h2>
+            
+            <!-- Schedule Form -->
+            <form id="scheduleForm" class="mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                        <input type="date" id="scheduleDate" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                        <input type="time" id="scheduleTime" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        Add Schedule
+                    </button>
+                </div>
+            </form>
+
+            <!-- Schedules List -->
+            <h3 class="text-lg font-semibold mb-4">Scheduled Bookings</h3>
+            <div id="schedulesList" class="space-y-4">
+                Loading schedules...
+            </div>
         </div>
 
         <div class="mt-8 flex justify-center">
@@ -90,6 +126,100 @@
                     `).join('');
             } catch (err) {
                 console.error('Error loading libraries:', err);
+            }
+        }
+
+        // Load schedules
+        async function loadSchedules() {
+            try {
+                const response = await fetch('/api/schedules');
+                const schedules = await response.json();
+                
+                const schedulesList = document.getElementById('schedulesList');
+                if (schedules.length === 0) {
+                    schedulesList.innerHTML = '<p class="text-gray-500">No schedules found</p>';
+                    return;
+                }
+                
+                schedulesList.innerHTML = schedules.map(schedule => `
+                    <div class="schedule-card p-4 rounded-lg status-${schedule.status}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-semibold">${schedule.scheduled_date} at ${schedule.scheduled_time}</h4>
+                                <p class="text-sm text-gray-600">
+                                    Library: ${schedule.library_code}<br>
+                                    Area: ${schedule.area_code}
+                                </p>
+                                <p class="text-sm mt-1 font-medium capitalize">Status: ${schedule.status}</p>
+                            </div>
+                            <button onclick="deleteSchedule(${schedule.id})"
+                                    class="text-red-500 hover:text-red-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Error loading schedules:', err);
+            }
+        }
+
+        // Add new schedule
+        document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!selectedLibrary || !selectedArea) {
+                alert('Please select a library and area first');
+                return;
+            }
+
+            const date = document.getElementById('scheduleDate').value;
+            const time = document.getElementById('scheduleTime').value;
+
+            try {
+                const response = await fetch('/api/schedules', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        libraryCode: selectedLibrary,
+                        areaCode: selectedArea,
+                        scheduledDate: date,
+                        scheduledTime: time
+                    })
+                });
+
+                if (response.ok) {
+                    loadSchedules();
+                    e.target.reset();
+                } else {
+                    alert('Failed to add schedule');
+                }
+            } catch (err) {
+                console.error('Error adding schedule:', err);
+                alert('Error adding schedule');
+            }
+        });
+
+        // Delete schedule
+        async function deleteSchedule(id) {
+            if (!confirm('Are you sure you want to delete this schedule?')) return;
+
+            try {
+                const response = await fetch(`/api/schedules/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadSchedules();
+                } else {
+                    alert('Failed to delete schedule');
+                }
+            } catch (err) {
+                console.error('Error deleting schedule:', err);
+                alert('Error deleting schedule');
             }
         }
 
@@ -178,6 +308,10 @@
         // Initial load
         loadPreferences();
         loadLibraries();
+        loadSchedules();
+
+        // Refresh schedules every minute
+        setInterval(loadSchedules, 60000);
     </script>
 </body>
 </html> 
