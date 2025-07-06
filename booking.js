@@ -10,7 +10,7 @@ async function runPuppeteer() {
     // Launch the browser and open a new blank page
     console.log('Running Puppeteer script...');
     const browser = await puppeteer.launch({
-      headless: true,
+      headless: false,
       args: ['--no-sandbox'],
     });
     const page = await browser.newPage();
@@ -53,7 +53,9 @@ async function bookOneFlow(page, time, duration) {
   const area = 'SRPL.4.ChildrenCollection';
   // Go to My Booking page
   await page.goto('https://www.nlb.gov.sg/seatbooking/');
-
+  // Wait for the page to load
+  await page.waitForSelector('input[aria-label="Select library"]', { visible: true, timeout: 30000 });
+  console.log('Seat booking Page loaded');
   await selectLibrary(page);
   await selectArea(page, area);
   await selectDate(page);
@@ -68,9 +70,6 @@ async function login(page) {
   // Navigate the page to a URL
   await page.goto('https://signin.nlb.gov.sg/authenticate/login');
 
-  // Set screen size
-  // await page.setViewport({ width: 1080, height: 1024 });
-
   // Type into username and password fields
   await page.type('#username', process.env.NLB_USERNAME);
   await page.type('#password', process.env.NLB_PASSWORD);
@@ -79,9 +78,9 @@ async function login(page) {
   const submitBtnSelector = 'input.btn[name="submit"]';
   await page.waitForSelector(submitBtnSelector);
   await page.click(submitBtnSelector);
-
-  // Wait for next page load
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  console.log('Clicked on Submit button');
+  // Wait for navigation to complete after login
+  console.log('Navigation to complete after login');
 }
 
 async function setGeolocation(page) {
@@ -95,43 +94,68 @@ async function setGeolocation(page) {
 }
 
 async function selectLibrary(page) {
-  // Wait for the input element to be available
-  await page.waitForSelector('input[aria-label="Select library"]');
+  try {
+    const libraryInputSelector = 'input[aria-label="Select library"]';
+    const dialogSelector = 'div[role="dialog"]';
+    const serangoonLibrarySelector = 'input[value="SRPL"]';
+    let maxAttempts = 3;
+    let attempt = 0;
+    let dialogVisible = false;
 
-  console.log('Waited for the Select library to be available');
+    console.log('Waiting for the library input to be available, interactable, and not disabled');    
+    
+    // Wait for the library input to be available
+    await page.waitForSelector(libraryInputSelector, { visible: true, timeout: 30000 });
+    console.log('Library selector is available and ready');
 
-  // Click the input element to open the dialog
-  await page.waitForSelector(
-    'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select library"]'
-  );
+    while (attempt < maxAttempts && !dialogVisible) {
+      attempt++;
+      console.log(`Attempt ${attempt} to open library selection dialog`);
 
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  // Click the parent element of the input with aria-label="Select library"
-  await page.click(
-    'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select library"]'
-  );
+      // Click the library input
+      await page.click(libraryInputSelector, { clickCount: 1 });
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait a bit after click
 
-  console.log('Clicked to Select library ');
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  await page.click(
-    'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select library"]',
-    { clickCount: 2 }
-  );
+      // Verify if dialog is visible
+      dialogVisible = await page.evaluate((selector) => {
+        const dialog = document.querySelector(selector);
+        return dialog && 
+               window.getComputedStyle(dialog).display !== 'none' && 
+               window.getComputedStyle(dialog).visibility !== 'hidden';
+      }, dialogSelector);
 
-  console.log('Clicked again to Select library ');
-  // Wait for the dialog to be visible
-  await page.waitForSelector('div[role="dialog"]');
-  // Find the radio input element with the value "SRPL" (Serangoon Public Library)
-  const serangoonRadioInput = await page.$('input[value="SRPL"]');
-  // Click the radio input to select "Serangoon"
-  await serangoonRadioInput.click();
-  // Wait for some time to see the result (optional)
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!dialogVisible) {
+        console.log('Dialog not visible, trying again...');
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait before next attempt
+      }
+    }
+
+    if (!dialogVisible) {
+      throw new Error('Failed to open library selection dialog after multiple attempts');
+    }
+
+    console.log('Library selection dialog opened successfully');
+
+    // Wait for and click the Serangoon library option
+    await page.waitForSelector(serangoonLibrarySelector, { visible: true, timeout: 30000 });
+    await page.click(serangoonLibrarySelector);
+    
+    // Additional verification that Serangoon is selected
+    const selectedValue = await page.$eval(libraryInputSelector, el => el.value);
+    if (!selectedValue.includes('Serangoon')) {
+      throw new Error('Library selection verification failed');
+    }
+    
+    console.log('Successfully selected Serangoon Public Library');
+  } catch (error) {
+    console.error('Error in selectLibrary:', error.message);
+    throw error;
+  }
 }
 
 async function selectArea(page, area) {
   await page.click(
-    'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select area"]'
+    'div.v-input > div.v-input__control > div.v-input__slot > div.cv-text-field__slot > input[aria-label="Select area"]'
   );
   console.log('Clicked to Area slot ');
   await new Promise((resolve) => setTimeout(resolve, 500));

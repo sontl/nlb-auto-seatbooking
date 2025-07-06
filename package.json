@@ -1,0 +1,21 @@
+{
+  "name": "nlb-automation",
+  "version": "1.0.0",
+  "description": "Automation scripts for NLB seat booking and check-in",
+  "main": "booking.js",
+  "scripts": {
+    "book": "node booking.js",
+    "checkin": "node checkin.js"
+  },
+  "keywords": [
+    "nlb",
+    "automation",
+    "puppeteer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "puppeteer": "^22.3.0"
+  }
+} 
