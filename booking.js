@@ -1,14 +1,42 @@
 const puppeteer = require('puppeteer');
 const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
 
 const DURATION30 = '30';
 const DURATION45 = '45';
 
+// Load library data from JSON file
+const libraryData = JSON.parse(fs.readFileSync(path.join(__dirname, 'library.json'), 'utf8'));
+
+// Convert library data into a more usable format
+const LIBRARIES = libraryData.reduce((acc, lib) => {
+  if (lib.geolocationInfo && lib.geolocationInfo.length > 0) {
+    const geo = lib.geolocationInfo[0];
+    acc[lib.code] = {
+      code: lib.code,
+      name: lib.name,
+      location: {
+        latitude: (geo.maxLat + geo.minLat) / 2, // Use center point
+        longitude: (geo.maxLong + geo.minLong) / 2
+      }
+    };
+  }
+  return acc;
+}, {});
+
+// Get library code from environment variable or default to Serangoon
+const LIBRARY_CODE = process.env.LIBRARY_CODE || 'SRPL';
+const SELECTED_LIBRARY = LIBRARIES[LIBRARY_CODE];
+
+if (!SELECTED_LIBRARY) {
+  throw new Error(`Invalid library code: ${LIBRARY_CODE}. Available libraries: ${Object.keys(LIBRARIES).join(', ')}`);
+}
+
 // Function to run Puppeteer
 async function runPuppeteer() {
   try {
-    // Launch the browser and open a new blank page
-    console.log('Running Puppeteer script...');
+    console.log(`Running Puppeteer script for ${SELECTED_LIBRARY.name}...`);
     const browser = await puppeteer.launch({
       headless: false,
       args: ['--no-sandbox'],
@@ -84,27 +112,26 @@ async function login(page) {
 }
 
 async function setGeolocation(page) {
-  // Set geolocation to NLB at Serangoon Nex
+  // Set geolocation based on selected library
   await page.setGeolocation({
-    latitude: 1.3500680243819974,
-    longitude: 103.87314643603517,
+    latitude: SELECTED_LIBRARY.location.latitude,
+    longitude: SELECTED_LIBRARY.location.longitude,
   });
 
-  console.log('Set geolocation to NLB at Serangoon Nex');
+  console.log(`Set geolocation to ${SELECTED_LIBRARY.name}`);
 }
 
 async function selectLibrary(page) {
   try {
     const libraryInputSelector = 'input[aria-label="Select library"]';
     const dialogSelector = 'div[role="dialog"]';
-    const serangoonLibrarySelector = 'input[value="SRPL"]';
+    const librarySelector = `input[value="${SELECTED_LIBRARY.code}"]`;
     let maxAttempts = 3;
     let attempt = 0;
     let dialogVisible = false;
 
-    console.log('Waiting for the library input to be available, interactable, and not disabled');    
+    console.log(`Waiting for the library input to be available to select ${SELECTED_LIBRARY.name}`);    
     
-    // Wait for the library input to be available
     await page.waitForSelector(libraryInputSelector, { visible: true, timeout: 30000 });
     console.log('Library selector is available and ready');
 
@@ -112,11 +139,9 @@ async function selectLibrary(page) {
       attempt++;
       console.log(`Attempt ${attempt} to open library selection dialog`);
 
-      // Click the library input
       await page.click(libraryInputSelector, { clickCount: 1 });
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait a bit after click
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Verify if dialog is visible
       dialogVisible = await page.evaluate((selector) => {
         const dialog = document.querySelector(selector);
         return dialog && 
@@ -126,7 +151,7 @@ async function selectLibrary(page) {
 
       if (!dialogVisible) {
         console.log('Dialog not visible, trying again...');
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait before next attempt
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
 
@@ -136,17 +161,18 @@ async function selectLibrary(page) {
 
     console.log('Library selection dialog opened successfully');
 
-    // Wait for and click the Serangoon library option
-    await page.waitForSelector(serangoonLibrarySelector, { visible: true, timeout: 30000 });
-    await page.click(serangoonLibrarySelector);
+    await page.waitForSelector(librarySelector, { visible: true, timeout: 30000 });
+    await page.click(librarySelector);
     
-    // Additional verification that Serangoon is selected
     const selectedValue = await page.$eval(libraryInputSelector, el => el.value);
-    if (!selectedValue.includes('Serangoon')) {
+    // add logs
+    console.log(`Selected value: ${selectedValue}`);
+    console.log("SELECTED_LIBRARY code: ", SELECTED_LIBRARY.name);
+    if (!selectedValue.includes(SELECTED_LIBRARY.name)) {
       throw new Error('Library selection verification failed');
     }
     
-    console.log('Successfully selected Serangoon Public Library');
+    console.log(`Successfully selected ${SELECTED_LIBRARY.name}`);
   } catch (error) {
     console.error('Error in selectLibrary:', error.message);
     throw error;
