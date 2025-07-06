@@ -16,6 +16,7 @@ const LIBRARIES = libraryData.reduce((acc, lib) => {
     acc[lib.code] = {
       code: lib.code,
       name: lib.name,
+      areas: lib.areas,
       location: {
         latitude: (geo.maxLat + geo.minLat) / 2, // Use center point
         longitude: (geo.maxLong + geo.minLong) / 2
@@ -77,8 +78,16 @@ async function runPuppeteer() {
 }
 
 async function bookOneFlow(page, time, duration) {
-  const seatNumber = 'SRPL.4.ChildrenCollection.13';
-  const area = 'SRPL.4.ChildrenCollection';
+  // Get the first available area for the selected library
+  const selectedLibraryAreas = SELECTED_LIBRARY.areas;
+  if (!selectedLibraryAreas || selectedLibraryAreas.length === 0) {
+    throw new Error(`No areas available for library: ${SELECTED_LIBRARY.name}`);
+  }
+  
+  // Use the first area's code and first seat code
+  const firstArea = selectedLibraryAreas[0];
+  const areaCode = firstArea.code;
+  const seatNumber = firstArea.firstSeatCode;
   
   console.log('\n📚 Starting new booking flow for ' + time + ' (' + duration + ' mins)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
@@ -88,7 +97,7 @@ async function bookOneFlow(page, time, duration) {
   console.log('✨ Seat booking page loaded successfully');
   
   await selectLibrary(page);
-  await selectArea(page, area);
+  await selectArea(page, areaCode);
   await selectDate(page);
   await selectTime(page, time);
   await selectDuration(page, duration);
