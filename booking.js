@@ -36,7 +36,7 @@ if (!SELECTED_LIBRARY) {
 // Function to run Puppeteer
 async function runPuppeteer() {
   try {
-    console.log(`Running Puppeteer script for ${SELECTED_LIBRARY.name}...`);
+    console.log('\n🎯 Starting booking session for ' + SELECTED_LIBRARY.name + ' library...\n');
     const browser = await puppeteer.launch({
       headless: false,
       args: ['--no-sandbox'],
@@ -72,18 +72,21 @@ async function runPuppeteer() {
 
     // await browser.close();
   } catch (error) {
-    console.error(error);
+    console.error('❌ Error:', error);
   }
 }
 
 async function bookOneFlow(page, time, duration) {
   const seatNumber = 'SRPL.4.ChildrenCollection.13';
   const area = 'SRPL.4.ChildrenCollection';
-  // Go to My Booking page
+  
+  console.log('\n📚 Starting new booking flow for ' + time + ' (' + duration + ' mins)');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  
   await page.goto('https://www.nlb.gov.sg/seatbooking/');
-  // Wait for the page to load
   await page.waitForSelector('input[aria-label="Select library"]', { visible: true, timeout: 30000 });
-  console.log('Seat booking Page loaded');
+  console.log('✨ Seat booking page loaded successfully');
+  
   await selectLibrary(page);
   await selectArea(page, area);
   await selectDate(page);
@@ -92,33 +95,31 @@ async function bookOneFlow(page, time, duration) {
   await checkAvailableSlot(page);
   await loginToBook(page);
   await bookSeat(page, seatNumber);
+  
+  console.log('\n✅ Booking flow completed for ' + time);
 }
 
 async function login(page) {
-  // Navigate the page to a URL
+  console.log('\n🔐 Starting login process...');
   await page.goto('https://signin.nlb.gov.sg/authenticate/login');
 
-  // Type into username and password fields
   await page.type('#username', process.env.NLB_USERNAME);
   await page.type('#password', process.env.NLB_PASSWORD);
 
-  // Click on Submit button
   const submitBtnSelector = 'input.btn[name="submit"]';
   await page.waitForSelector(submitBtnSelector);
   await page.click(submitBtnSelector);
-  console.log('Clicked on Submit button');
-  // Wait for navigation to complete after login
-  console.log('Navigation to complete after login');
+  console.log('➜ Submitted login credentials');
+  console.log('✅ Login successful');
 }
 
 async function setGeolocation(page) {
-  // Set geolocation based on selected library
   await page.setGeolocation({
     latitude: SELECTED_LIBRARY.location.latitude,
     longitude: SELECTED_LIBRARY.location.longitude,
   });
 
-  console.log(`Set geolocation to ${SELECTED_LIBRARY.name}`);
+  console.log('\n📍 Location set to: ' + SELECTED_LIBRARY.name);
 }
 
 async function selectLibrary(page) {
@@ -130,14 +131,14 @@ async function selectLibrary(page) {
     let attempt = 0;
     let dialogVisible = false;
 
-    console.log(`Waiting for the library input to be available to select ${SELECTED_LIBRARY.name}`);    
+    console.log('\n📚 Selecting library: ' + SELECTED_LIBRARY.name);    
     
     await page.waitForSelector(libraryInputSelector, { visible: true, timeout: 30000 });
-    console.log('Library selector is available and ready');
+    console.log('➜ Library selector ready');
 
     while (attempt < maxAttempts && !dialogVisible) {
       attempt++;
-      console.log(`Attempt ${attempt} to open library selection dialog`);
+      console.log(`  Attempt ${attempt} to open selection dialog...`);
 
       await page.click(libraryInputSelector, { clickCount: 1 });
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -150,7 +151,7 @@ async function selectLibrary(page) {
       }, dialogSelector);
 
       if (!dialogVisible) {
-        console.log('Dialog not visible, trying again...');
+        console.log('  ↳ Dialog not visible, retrying...');
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
@@ -159,55 +160,60 @@ async function selectLibrary(page) {
       throw new Error('Failed to open library selection dialog after multiple attempts');
     }
 
-    console.log('Library selection dialog opened successfully');
+    console.log('➜ Selection dialog opened');
 
     await page.waitForSelector(librarySelector, { visible: true, timeout: 30000 });
     await page.click(librarySelector);
     
     const selectedValue = await page.$eval(libraryInputSelector, el => el.value);
-    // add logs
-    console.log(`Selected value: ${selectedValue}`);
-    console.log("SELECTED_LIBRARY code: ", SELECTED_LIBRARY.name);
     if (!selectedValue.includes(SELECTED_LIBRARY.name)) {
       throw new Error('Library selection verification failed');
     }
     
-    console.log(`Successfully selected ${SELECTED_LIBRARY.name}`);
+    console.log('✅ Selected: ' + SELECTED_LIBRARY.name);
   } catch (error) {
-    console.error('Error in selectLibrary:', error.message);
+    console.error('❌ Error selecting library:', error.message);
     throw error;
   }
 }
 
 async function selectArea(page, area) {
-  await page.click(
-    'div.v-input > div.v-input__control > div.v-input__slot > div.cv-text-field__slot > input[aria-label="Select area"]'
-  );
-  console.log('Clicked to Area slot ');
+  console.log('\n📍 Selecting area: ' + area);
+  
+  // Wait for the area input to be visible
+  const areaInputSelector = 'input[aria-label="Select area"]';
+  await page.waitForSelector(areaInputSelector, { visible: true, timeout: 30000 });
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  
+  // Click the area input to open the dialog
+  await page.click(areaInputSelector);
+  console.log('➜ Area selector opened');
   await new Promise((resolve) => setTimeout(resolve, 500));
 
+  // Wait for and click the area option
   await page.waitForSelector('div[role="dialog"]');
-  const nearChineseChildrenCollectionRadioInput = await page.$(
-    `input[value='${area}']`
-  );
-  await nearChineseChildrenCollectionRadioInput.click();
+  const areaOptionSelector = `input[value='${area}']`;
+  await page.waitForSelector(areaOptionSelector, { visible: true, timeout: 30000 });
+  await page.click(areaOptionSelector);
+  
+  console.log('✅ Area selected');
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
 async function selectDate(page) {
+  console.log('\n📅 Selecting date...');
   await page.click(
     'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select date"]'
   );
-  console.log('Clicked to Date slot ');
+  console.log('➜ Date selector opened');
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   const links = await page.$$('button > div.v-btn__content');
-  console.log(links.length);
   for (var i = 0; i < links.length; i++) {
     let valueHandle = await links[i].getProperty('innerText');
     let linkText = await valueHandle.jsonValue();
     if (linkText === getTomorrowsDate().toString()) {
-      console.log('Date selected: ' + linkText);
+      console.log('✅ Selected date: ' + linkText);
       await links[i].click();
       break;
     }
@@ -217,57 +223,56 @@ async function selectDate(page) {
 }
 
 async function selectTime(page, time) {
+  console.log('\n⏰ Selecting time slot: ' + time);
   await page.click(
     'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select time"]'
   );
-  console.log('Clicked to Time slot ');
+  console.log('➜ Time selector opened');
   await new Promise((resolve) => setTimeout(resolve, 1000));
-  // Find the radio input element with value "10:30"
+  
   const radioTimeInput = await page.waitForSelector(`input[value="${time}"]`);
-  // Click the radio input to select the time "10:30"
   await radioTimeInput.click();
-  // Wait for some time to see the result (optional)
+  console.log('✅ Time selected');
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
 async function selectDuration(page, duration) {
   if (duration !== DURATION30) {
+    console.log('\n⏱️ Selecting duration: ' + duration + ' minutes');
     await page.click(
       'div.v-input > div.v-input__control > div.v-input__slot > div.v-text-field__slot > input[aria-label="Select duration"]'
     );
-    console.log('Clicked to Duration slot ');
+    console.log('➜ Duration selector opened');
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    // Find the radio input element with value "10:30"
+    
     const radioDurationInput = await page.waitForSelector(
       `input[value="${duration}"]`
     );
-    // Click the radio input to select the time "10:30"
     await radioDurationInput.click();
-    // Wait for some time to see the result (optional)
+    console.log('✅ Duration selected');
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 }
 
 async function checkAvailableSlot(page) {
-  // Wait for the button element to be visible and available
+  console.log('\n🔍 Checking available slots...');
   const button = await page.waitForSelector(
     'div.row > div.col >  button > span.v-btn__content > i.mdi-magnify'
   );
   if (button) {
     await button.click();
-    console.log('Clicked to Check available slots ');
+    console.log('➜ Searching for available slots');
   } else {
-    console.log('Button not found');
+    console.log('❌ Search button not found');
   }
 
-  // Wait for some time to see the result (optional)
   await new Promise((resolve) => setTimeout(resolve, 2000));
+  console.log('✅ Slot check completed');
 }
 
 async function loginToBook(page) {
   try {
-    //await page.click('div[tabindex="0"]');
-    //await new Promise((resolve) => setTimeout(resolve, 2000));
+    console.log('\n🔐 Proceeding to booking authentication...');
 
     const isLoginToBookButtonExist = await page.$eval(
       'div.row > div.col >  button > span.v-btn__content > i.mdi-login-variant',
@@ -279,29 +284,32 @@ async function loginToBook(page) {
         'div.row > div.col >  button > span.v-btn__content > i.mdi-login-variant'
       );
       await loginToBookButton.click();
-      console.log('Clicked to Login to Book button ');
+      console.log('➜ Authenticating for booking');
     } else {
-      console.log('Login to Book Button not found');
+      console.log('ℹ️ Already authenticated');
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
   } catch (error) {
-    console.log(error);
+    console.error('❌ Authentication error:', error);
   }
 }
 
 async function bookSeat(page, seatNumber) {
+  console.log('\n💺 Selecting and confirming seat...');
   const bookButton = await page.waitForSelector(
     'div.row > div.col >  button > span.v-btn__content > i.mdi-calendar-check'
   );
   if (bookButton) {
     await bookButton.click();
-    console.log('Clicked to Book button ');
+    console.log('➜ Booking process initiated');
   } else {
-    console.log('Book Button not found');
+    console.log('❌ Book button not found');
   }
 
   await new Promise((resolve) => setTimeout(resolve, 1000));
   await page.click('div > i.mdi-seat-passenger');
+  console.log('➜ Selecting seat: ' + seatNumber);
+  
   await new Promise((resolve) => setTimeout(resolve, 1000));
   const radioSeatInput = await page.waitForSelector(
     `input[value="${seatNumber}"]`
@@ -310,6 +318,7 @@ async function bookSeat(page, seatNumber) {
 
   await new Promise((resolve) => setTimeout(resolve, 1000));
   await page.click('text=Confirm');
+  console.log('✅ Seat booking confirmed!');
   await new Promise((resolve) => setTimeout(resolve, 3000));
 }
 
