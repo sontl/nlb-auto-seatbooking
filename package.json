@@ -6,6 +6,7 @@
   "scripts": {
     "book": "node booking.js",
     "checkin": "node checkin.js",
+    "checkin:url": "node checkin_by_url.js",
     "start": "node server.js",
     "dev": "nodemon --watch '*.js' --watch 'public/*' server.js",
     "schedule": "node scheduler.js"
@@ -29,4 +30,4 @@
   "devDependencies": {
     "nodemon": "^3.1.0"
   }
-} 
+}

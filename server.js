@@ -48,8 +48,8 @@ app.get('/api/preferences', async (req, res) => {
 
 app.post('/api/preferences', async (req, res) => {
     try {
-        const { libraryCode, areaCode } = req.body;
-        await savePreferences(libraryCode, areaCode);
+        const { libraryCode, areaCode, seatCode } = req.body;
+        await savePreferences(libraryCode, areaCode, seatCode);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -58,7 +58,12 @@ app.post('/api/preferences', async (req, res) => {
 
 app.post('/api/trigger-booking', (req, res) => {
     const bookingProcess = spawn('node', ['booking.js'], {
-        env: { ...process.env, LIBRARY_CODE: req.body.libraryCode }
+        env: {
+            ...process.env,
+            LIBRARY_CODE: req.body.libraryCode,
+            AREA_CODE: req.body.areaCode || '',
+            SEAT_CODE: req.body.seatCode || ''
+        }
     });
 
     bookingProcess.stdout.on('data', (data) => {
@@ -88,8 +93,8 @@ app.get('/api/schedules', async (req, res) => {
 
 app.post('/api/schedules', async (req, res) => {
     try {
-        const { libraryCode, areaCode, scheduledDate, scheduledTime } = req.body;
-        const id = await addSchedule(libraryCode, areaCode, scheduledDate, scheduledTime);
+        const { libraryCode, areaCode, scheduledDate, scheduledTime, seatCode } = req.body;
+        const id = await addSchedule(libraryCode, areaCode, scheduledDate, scheduledTime, seatCode);
         res.json({ id, success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -120,4 +125,4 @@ app.delete('/api/schedules/:id', async (req, res) => {
 // Start server
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
-}); 
+});

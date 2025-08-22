@@ -36,7 +36,8 @@ async function scheduleBookings() {
                         console.log('\n⚡ Starting Puppeteer booking process...');
                         await runPuppeteerWithPreferences({
                             libraryCode: schedule.library_code,
-                            areaCode: schedule.area_code
+                            areaCode: schedule.area_code,
+                            seatCode: schedule.seat_code
                         });
                         const endTime = new Date();
                         const duration = (endTime - startTime) / 1000;

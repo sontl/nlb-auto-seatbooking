@@ -64,28 +64,31 @@ async function runPuppeteerWithPreferences(preferences = null) {
     await setGeolocation(page);
 
     // Use the provided area code or the first available area
-    const areaCode = preferences?.areaCode || selectedLibrary.areas[0].code;
+    const areaCode = preferences?.areaCode || process.env.AREA_CODE || selectedLibrary.areas[0].code;
     const area = selectedLibrary.areas.find(a => a.code === areaCode);
     
     if (!area) {
       throw new Error(`Invalid area code: ${areaCode} for library ${selectedLibrary.name}`);
     }
 
-    await bookOneFlow(page, '11:00', DURATION30, selectedLibrary, area);
-    await bookOneFlow(page, '11:45', DURATION30, selectedLibrary, area);
-    await bookOneFlow(page, '13:30', DURATION30, selectedLibrary, area);
-    await bookOneFlow(page, '14:15', DURATION30, selectedLibrary, area);
-    await bookOneFlow(page, '15:00', DURATION30, selectedLibrary, area);
-    await bookOneFlow(page, '15:45', DURATION30, selectedLibrary, area);
-    await bookOneFlow(page, '16:30', DURATION30, selectedLibrary, area);
-    await bookOneFlow(page, '17:15', DURATION30, selectedLibrary, area);
+    // Determine seat code: preferences > env > area's firstSeatCode
+    const seatCode = preferences?.seatCode || process.env.SEAT_CODE || area.firstSeatCode;
+
+    await bookOneFlow(page, '11:00', DURATION30, selectedLibrary, area, seatCode);
+    await bookOneFlow(page, '11:45', DURATION30, selectedLibrary, area, seatCode);
+    await bookOneFlow(page, '13:30', DURATION30, selectedLibrary, area, seatCode);
+    await bookOneFlow(page, '14:15', DURATION30, selectedLibrary, area, seatCode);
+    await bookOneFlow(page, '15:00', DURATION30, selectedLibrary, area, seatCode);
+    await bookOneFlow(page, '15:45', DURATION30, selectedLibrary, area, seatCode);
+    await bookOneFlow(page, '16:30', DURATION30, selectedLibrary, area, seatCode);
+    await bookOneFlow(page, '17:15', DURATION30, selectedLibrary, area, seatCode);
 
   } catch (error) {
     console.error('❌ Error:', error);
   }
 }
 
-async function bookOneFlow(page, time, duration, selectedLibrary, selectedArea) {
+async function bookOneFlow(page, time, duration, selectedLibrary, selectedArea, seatCode) {
   console.log('\n📚 Starting new booking flow for ' + time + ' (' + duration + ' mins)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   
@@ -100,7 +103,7 @@ async function bookOneFlow(page, time, duration, selectedLibrary, selectedArea) 
   await selectDuration(page, duration);
   await checkAvailableSlot(page);
   await loginToBook(page);
-  await bookSeat(page, selectedArea.firstSeatCode);
+  await bookSeat(page, seatCode || selectedArea.firstSeatCode);
   
   console.log('\n✅ Booking flow completed for ' + time);
 }

@@ -36,7 +36,7 @@ function getPreferences() {
 }
 
 // Save new preferences
-function savePreferences(libraryCode, areaCode) {
+function savePreferences(libraryCode, areaCode, seatCode = null) {
   return new Promise((resolve, reject) => {
     db.run("INSERT INTO preferences (library_code, area_code) VALUES (?, ?)", 
       [libraryCode, areaCode], 
@@ -71,11 +71,11 @@ function getActiveSchedules() {
   });
 }
 
-function addSchedule(libraryCode, areaCode, scheduledDate, scheduledTime) {
+function addSchedule(libraryCode, areaCode, scheduledDate, scheduledTime, seatCode = null) {
   return new Promise((resolve, reject) => {
     db.run(
-      "INSERT INTO schedules (library_code, area_code, scheduled_date, scheduled_time) VALUES (?, ?, ?, ?)",
-      [libraryCode, areaCode, scheduledDate, scheduledTime],
+      "INSERT INTO schedules (library_code, area_code, scheduled_date, scheduled_time, seat_code) VALUES (?, ?, ?, ?, ?)",
+      [libraryCode, areaCode, scheduledDate, scheduledTime, seatCode],
       function(err) {
         if (err) reject(err);
         resolve(this.lastID);

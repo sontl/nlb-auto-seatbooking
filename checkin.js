@@ -7,7 +7,7 @@ async function runPuppeteer() {
     // Launch the browser and open a new blank page
     console.log(`Running NLB Automation Checkin at ...${printCurrentTime()}`);
     const browser = await puppeteer.launch({
-      headless: true,
+      headless: false,
       args: ['--no-sandbox'],
     });
 
@@ -55,8 +55,8 @@ async function runPuppeteer() {
               altitude: null,
               altitudeAccuracy: null,
               heading: null,
-              latitude: 1.3500680243819974,
-              longitude: 103.87314643603517,
+              latitude: 1.374578,
+              longitude: 103.845317,
               speed: null,
             },
           });
